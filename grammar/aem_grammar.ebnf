@@ -1,0 +1,10 @@
+(* AEM EBNF - v1.1 *)
+program             = ( statement | function_definition | struct_definition | interface_definition | hardware_block | queue_definition )* ;
+primitive_type      = "u8" | "u16" | "u32" | "u64" | "i8" | "i16" | "i32" | "i64" | "f32" | "f64" | "bool" | "void" ;
+hardware_block      = "hardware" "{" hardware_entry* "}" ;
+hardware_entry      = "pin" identifier "at" pin_id "[" pin_options "]" ";" 
+                    | "interrupt" identifier "on" identifier "[" trigger_mode "]" "calls" identifier ";" ;
+queue_definition    = "queue" identifier "<" primitive_type "," integer ">" "[" queue_policy "]" ";" ;
+interface_definition = "interface" identifier "{" interface_method* "}" ;
+struct_definition    = "struct" identifier ( ":" identifier )? "{" struct_member* "}" ;
+function_definition = "fn" identifier "(" parameter_list? ")" ( ":" primitive_type )? block ;

@@ -1,0 +1,10 @@
+interface DigitalIO {
+    fn set(bool: level);
+    fn toggle();
+    fn read() : bool;
+}
+
+module Trig {
+    fn sin_i(u8: angle) : i16;
+    fn sin_f(f32: rad) : f32;
+}

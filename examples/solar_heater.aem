@@ -1,0 +1,7 @@
+hardware {
+    pin FanPWM at 9 [output];
+}
+
+task ControlTask {
+    // Logic here
+}
