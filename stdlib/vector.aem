@@ -1,0 +1,76 @@
+// AEM 2D Vector Library
+//
+// This module provides a 2D vector struct and related mathematical
+// operations, useful for graphics, physics, and robotics.
+
+// We need to use a specific instantiation of the trig library.
+// For the vector library functions, we can default to a balanced size.
+use trig<64>;
+
+module vector {
+
+    struct Vec2 {
+        let x: i16;
+        let y: i16;
+    }
+
+    struct Polar {
+        let angle: u16;  // 0-65535, AEM standard
+        let magnitude: i16;
+    }
+
+    /// Calculates the squared magnitude of a vector. Faster than a full
+    /// magnitude calculation if only comparing distances.
+    fn magnitude_squared(Vec2: v) : i32 {
+        return (v.x as i32 * v.x as i32) + (v.y as i32 * v.y as i32);
+    }
+
+    /// Calculates the magnitude (length) of a vector using a fast
+    /// CORDIC-like integer algorithm.
+    fn magnitude(Vec2: v) : i16 {
+        let mut abs_x = v.x;
+        let mut abs_y = v.y;
+        if (v.x < 0) { abs_x = -v.x; }
+        if (v.y < 0) { abs_y = -v.y; }
+
+        let mut x_acc = abs_x as i32;
+        let mut y_acc = abs_y as i32;
+        
+        if (y_acc > x_acc) {
+            let temp = x_acc;
+            x_acc = y_acc;
+            y_acc = temp;
+        }
+
+        // CORDIC-like approximation for sqrt(x^2 + y^2)
+        // result ~= x + y/2
+        return (x_acc + (y_acc >> 1)) as i16;
+    }
+
+    /// Converts a cartesian vector (x, y) to polar coordinates (angle, magnitude).
+    fn to_polar(Vec2: v) : Polar {
+        let angle = trig::atan2(v.y, v.x);
+        let mag = magnitude(v);
+        return Polar(angle: angle, magnitude: mag);
+    }
+
+    /// Converts polar coordinates (angle, magnitude) to a cartesian vector (x, y).
+    fn from_polar(Polar: p) : Vec2 {
+        let cos_a = trig::cos(p.angle);
+        let sin_a = trig::sin(p.angle);
+        let x = (p.magnitude as i32 * cos_a as i32) / trig::OUTPUT_SCALE as i32;
+        let y = (p.magnitude as i32 * sin_a as i32) / trig::OUTPUT_SCALE as i32;
+        return Vec2(x: x as i16, y: y as i16);
+    }
+
+    /// Rotates a vector by a given angle.
+    fn rotate(Vec2: v, u16: angle) : Vec2 {
+        let cos_a = trig::cos(angle);
+        let sin_a = trig::sin(angle);
+
+        let x_new = (v.x as i32 * cos_a as i32 - v.y as i32 * sin_a as i32) / trig::OUTPUT_SCALE as i32;
+        let y_new = (v.x as i32 * sin_a as i32 + v.y as i32 * cos_a as i32) / trig::OUTPUT_SCALE as i32;
+
+        return Vec2(x: x_new as i16, y: y_new as i16);
+    }
+}

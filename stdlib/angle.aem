@@ -1,0 +1,41 @@
+// AEM Angle Conversion Library
+//
+// This module provides `const fn` utilities to convert between different
+// angular units (degrees, radians, AEM's internal u16 format) at compile-time.
+
+module angle {
+    const PI_F32: f32 = 3.1415926535;
+    
+    // AEM's internal angle representation uses the full u16 range for 2*PI.
+    const ANGLE_MAX: u16 = 65535;
+    
+    /// Converts a floating-point degree value (0-360) to AEM's u16 format.
+    const fn from_degrees_f32(f32: degrees) : u16 {
+        return (degrees / 360.0 * ANGLE_MAX as f32) as u16;
+    }
+
+    /// Converts an integer degree value (0-360) to AEM's u16 format.
+    const fn from_degrees_i16(i16: degrees) : u16 {
+        return (degrees as i32 * ANGLE_MAX as i32 / 360) as u16;
+    }
+
+    /// Converts a floating-point radian value to AEM's u16 format.
+    const fn from_radians_f32(f32: radians) : u16 {
+        return (radians / (2.0 * PI_F32) * ANGLE_MAX as f32) as u16;
+    }
+
+    /// Converts an AEM u16 angle to floating-point degrees.
+    const fn to_degrees_f32(u16: aem_angle) : f32 {
+        return (aem_angle as f32 / ANGLE_MAX as f32) * 360.0;
+    }
+
+    /// Converts an AEM u16 angle to integer degrees.
+    const fn to_degrees_i16(u16: aem_angle) : i16 {
+        return (aem_angle as i32 * 360 / ANGLE_MAX as i32) as i16;
+    }
+
+    /// Converts an AEM u16 angle to floating-point radians.
+    const fn to_radians_f32(u16: aem_angle) : f32 {
+        return (aem_angle as f32 / ANGLE_MAX as f32) * (2.0 * PI_F32);
+    }
+}
