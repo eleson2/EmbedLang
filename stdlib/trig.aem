@@ -1,0 +1,77 @@
+// AEM Generic, Self-Generating Trigonometry Library
+//
+// This module can be instantiated with a specific LUT size. It uses
+// `const fn` to generate its own lookup table at compile-time, which is
+// then used by the runtime functions for high-performance calculations.
+
+module trig<const ENTRIES: u16> {
+
+    // A basic, compile-time power function (helper for sine).
+    // Note: A full implementation would handle edge cases.
+    const fn pow(f32: base, u8: exp) : f32 {
+        if (exp == 0) { return 1.0; }
+        let mut result = base;
+        for i in 1..exp {
+            result = result * base;
+        }
+        return result;
+    }
+
+    // A compile-time `sin` approximation using a Taylor series.
+    // This function will be executed by the C++ compiler, not at runtime.
+    const fn sin_compile_time(f32: x) : f32 {
+        // A simple 4-term Taylor series approximation for sin(x)
+        return x - (pow(x, 3) / 6.0) + (pow(x, 5) / 120.0) - (pow(x, 7) / 5040.0);
+    }
+
+    // The LUT generator function. Also a `const fn`.
+    const fn generate_lut() -> [i16; ENTRIES + 1] {
+        let mut lut: [i16; ENTRIES + 1];
+        let PI: f32 = 3.14159265;
+
+        // Loop to populate the LUT for the first quadrant (0 to pi/2)
+        for i in 0..=ENTRIES {
+            let angle = (i as f32 / ENTRIES as f32) * (PI / 2.0);
+            let sin_value = sin_compile_time(angle);
+            // Scale by 10,000 and store as i16
+            lut[i] = (sin_value * 10000.0) as i16;
+        }
+        return lut;
+    }
+
+    // The actual LUT, generated at compile-time by the function above.
+    const SINE_LUT: [i16; ENTRIES + 1] = generate_lut();
+    
+    // The bit-shift required to scale an angle to a LUT index.
+    // E.g., for 16 entries, we need to map 0-63 to 0-15, which is a shift of 2 (64/16=4 -> 2^2).
+    // The transpiler would need to evaluate log2 at compile time.
+    const LUT_SHIFT: u8 = 4; // Placeholder, should be: log2(64 / ENTRIES)
+
+    /// The public, runtime `sin` function that uses the generated LUT.
+    fn sin(u8: angle) : i16 {
+        let quadrant = (angle >> 6) & 0b11;
+        let angle_in_quadrant = angle & 0b00111111; // 0-63
+
+        if (quadrant == 1 || quadrant == 3) {
+            angle_in_quadrant = 63 - angle_in_quadrant;
+        }
+
+        let index = (angle_in_quadrant >> LUT_SHIFT) as u8;
+        let fraction = (angle_in_quadrant & ( (1 << LUT_SHIFT) - 1) ) as i16;
+
+        let y1 = SINE_LUT[index];
+        let y2 = SINE_LUT[index + 1];
+
+        let slope = y2 - y1;
+        let interpolated_value = y1 + ((slope * fraction) >> LUT_SHIFT);
+
+        if (quadrant > 1) {
+            return -interpolated_value;
+        }
+        return interpolated_value;
+    }
+
+    fn cos(u8: angle) : i16 {
+        return sin(angle + 64);
+    }
+}

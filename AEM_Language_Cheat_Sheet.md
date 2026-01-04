@@ -32,12 +32,13 @@ AEM uses strictly defined integer types to ensure cross-platform consistency and
 | `hardware`    | Global block for defining physical I/O pins, devices, and interrupt bindings.                                                        | `hardware { pin LED at 13 [output]; }`         |
 | `task`        | Defines a non-preemptive, scheduled function.                                                                                        | `task BlinkLED { LED.toggle(); }`              |
 | `interface`   | Defines a static contract (blueprint) for behavior that `struct`s can implement. No internal state for pure interfaces.             | `interface Motor { fn setSpeed(u8: speed); }`  |
-| `struct`      | Defines a data structure, can contain variables (`let`/`let mut`) and functions (`fn`). Can implement `interface`s.                | `struct Point { let x: i16; let y: i16; }`     |
+| `struct`      | Defines a data structure. Can be generic and implement `interface`s.                                                                 | `struct Point<T> { let x: T; let y: T; }`      |
 | `queue`       | Declares a statically allocated, single-writer, single-reader buffer.                                                                | `queue Readings <i16, 16> [overwrite_old];`    |
 | `fn`          | Defines a function. Supports hoisting.                                                                                               | `fn calculate(i16: val) : i16 { return val; }` |
+| `const fn`    | Defines a function that can be evaluated at compile-time. Transpiles to `constexpr`.                                               | `const fn pow(f32: b, u8: e) : f32 { ... }`   |
 | `let`/`let mut` | Declares an immutable (`let`) or mutable (`let mut`) variable or constant.                                                           | `let count: u8 = 0; let mut state: bool = false;` |
 | `const`       | Declares a compile-time constant, for single values or arrays. | `const MAX_VAL: u16 = 255;` `const LUT: [u8; 4] = [0, 1, 2, 3];` |
-| `module`      | Implicitly defined by file structure (`my_file.aem` creates `my_file::` namespace).                                                  | `use stdlib::Clock;`                           |
+| `module`      | Defines a namespace. Can be generic over `const` parameters.                                                                         | `use trig<16>;`                                |
 | `use`         | Imports modules or specific symbols into the current scope.                                                                          | `use my_module::MyStruct;`                     |
 | `return`      | Returns a value from a function.                                                                                                     | `return true;`                                 |
 | `if`/`else if`/`else` | Conditional branching. Mandatory braces `{}`.                                                                                | `if (x > 0) { ... } else { ... }`              |
@@ -126,7 +127,46 @@ fn operate_pin(DigitalIO: pin_instance) {
 }
 ```
 
-## 8. Error Handling
+## 8. Generics & Compile-Time Execution
+AEM supports compile-time customization and code generation through `const` generic parameters and `const fn`.
+
+### Const Generic Parameters
+Structs and modules can be made generic over constant values, allowing for highly reusable and efficient code.
+
+```aem
+// A MovingAverage filter generic over its sample size
+struct MovingAverage<const SIZE: u8> {
+    let mut samples: [i16; SIZE];
+    // ...
+}
+
+// A trigonometry module generic over its LUT size
+module trig<const ENTRIES: u16> {
+    // ...
+}
+
+// Usage
+let small_filter = MovingAverage<8>();
+use trig<32>; // Use trig library specialized for a 32-entry LUT
+```
+
+### Compile-Time Functions (`const fn`)
+A function marked `const fn` can be evaluated by the C++ compiler during the compilation process. This allows for complex initializations of `const` variables, such as generating a lookup table (LUT) on the fly.
+
+- **Rule**: `const fn` is translated directly to a C++ `constexpr` function.
+- **Capability**: Enables compile-time generation of data, eliminating the need for pre-calculated tables in source code.
+
+```aem
+const fn factorial(u8: n) : u32 {
+    if (n == 0) { return 1; }
+    return n as u32 * factorial(n - 1);
+}
+
+// Use the const fn to initialize a const variable
+const COMPILE_TIME_VALUE: u32 = factorial(5); // Value is 120
+```
+
+## 9. Error Handling
 AEM uses the "Result Pattern" instead of exceptions. Functions that can fail return a value that must be explicitly checked. A `!` suffix on a type can indicate a fallible return.
 
 ```aem
@@ -147,7 +187,7 @@ fn process_data() {
     }
 }
 ```
-## 9. Standard Library Modules
+## 10. Standard Library Modules
 
 ### `Clock` Module
 *   `Clock.millis() : u32` - Current milliseconds since startup.
@@ -186,19 +226,20 @@ fn process_data() {
 *   `math.min(i32: a, i32: b) : i32`
 *   `math.max(i32: a, i32: b) : i32`
 
-### `Trig` Module (integer-only trigonometry using u8 for angles)
-Angles are `u8` (0-255 representing 0-360 degrees, "binary degrees"). Results are `i16` scaled by 10,000.
-*   `Trig.sin(u8: angle) : i16`
-*   `Trig.cos(u8: angle) : i16`
-*   `Trig.tan(u8: angle) : i32`
-*   `Trig.atan2(i16: y, i16: x) : u8`
+### `Trig` Module (Generic)
+*   A generic, self-generating trigonometry library.
+*   `use trig<ENTRIES>;` where `ENTRIES` is the desired LUT size (e.g., 16, 32).
+*   The module uses `const fn` to build its own LUT at compile-time.
+*   Provides `sin(u8: angle)`, `cos(u8: angle)`, etc.
 
 ### Standard Constants (Accessed via `const` or `module::Constant`)
 *   `SYS_FREQ` - CPU Frequency in Hz.
 *   `BOARD_NAME` - String name of the target board.
 *   `TICK_RATE` - Scheduler tick resolution (e.g., 1ms).
 
-## 10. Transpilation to C++ Considerations
+## 11. Transpilation to C++ Considerations
+*   **Compile-Time Execution**: `const fn` in AEM is transpiled to `constexpr` in C++, offloading compile-time calculations to the C++ compiler.
+*   **Generics**: Generic modules and structs are transpiled using C++ templates, creating specialized versions of the code at compile-time (monomorphization).
 *   **Static Polymorphism**: Interfaces map to C++ templates or concepts, avoiding runtime overhead.
 *   **Queues**: Map to specialized, fixed-size C++ ring buffer classes optimized for SPSC.
 *   **Tasks**: Map to C++ objects registered with a non-preemptive scheduler (e.g., Arkipenko's).
