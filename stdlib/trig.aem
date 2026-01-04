@@ -86,11 +86,10 @@ module trig<const ENTRIES: u16> {
         let slope = y2 - y1;
         let interpolated_value = y1 + ((slope * fraction) >> LUT_SHIFT);
 
-        // Negate the result for quadrants 2 and 3
-        if (quadrant > 1) {
-            return -interpolated_value;
-        }
-        return interpolated_value;
+        // Negate the result for quadrants 2 and 3 using a branchless trick.
+        // This avoids a conditional jump, which can be faster on some architectures.
+        let sign_mask: i16 = -(quadrant as i16 >> 1); // -1 if quadrant 2 or 3, 0 otherwise
+        return (interpolated_value ^ sign_mask) - sign_mask;
     }
 
     /// Calculates cosine by shifting the angle by 90 degrees and calling sin().
