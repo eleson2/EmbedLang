@@ -1,0 +1,29 @@
+// AEM GPIO (General-Purpose Input/Output) Library
+//
+// This module provides a `GpioPin` struct to interact with the
+// individual digital input/output pins of a microcontroller.
+
+module gpio {
+    // Defines the mode of a GPIO pin.
+    enum PinMode { INPUT, OUTPUT, INPUT_PULLUP, INPUT_PULLDOWN }
+
+    /// A struct representing a single GPIO pin.
+    /// Its constructor configures the hardware pin.
+    struct GpioPin {
+        let pin_num: u8;
+        let mode: PinMode;
+    }
+
+    /// Sets the pin to a high state (logic 1).
+    fn set_high(self);
+
+    /// Sets the pin to a low state (logic 0).
+    fn set_low(self);
+
+    /// Toggles the pin's current state.
+    fn toggle(self);
+
+    /// Reads the pin's current state.
+    /// Returns `true` for high, `false` for low.
+    fn read(self) : bool;
+}

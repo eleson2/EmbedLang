@@ -66,143 +66,21 @@ AEM provides a few intrinsic functions that directly map to low-level hardware a
     *   **Example**: `volatile_write<u32>(0x40021000, new_value);`
 
 ## 4. Hardware Manifest (`hardware` block)
-Defines static mappings of logical names to physical hardware.
+The `hardware` block provides a centralized place to define named, compile-time constants for physical hardware properties, such as pin numbers or bus IDs. This makes code more readable and easier to port to new hardware.
 
 ```aem
 hardware {
-    pin StatusLED at 13 [output, active_high]; // Digital output pin
-    pin UserBtn   at 2  [input, pull_up];       // Digital input pin with pull-up
-    device TempSensor at I2C_0 [address: 0x48]; // I2C device at specific address
-
-    // Static Interrupt Binding
-    interrupt OnClick on UserBtn [falling] calls HandleButton; 
+    const LED_PIN: u8 = 13;
+    const MOTOR_PWM_PIN: u8 = 9;
+    const I2C_BUS_ID: u8 = 0;
 }
 ```
 
 ## 5. Tasks & Scheduling
 Tasks are declared with the `task` keyword and managed procedurally.
-
-```aem
-task BlinkLED {
-    // Task logic
-    LED.toggle();
-}
-
-fn main_setup() {
-    BlinkLED.setInterval(500ms);  // Set interval (time literals: ms, us, s)
-    BlinkLED.start();             // Start the task
-    BlinkLED.stop();              // Stop the task
-    BlinkLED.startNow();          // Run immediately once
-    BlinkLED.startLater();        // Run on the next scheduler tick
-}
-```
-
-## 6. Queues
-Statically allocated, single-writer, single-reader, lock-free queues for inter-task/ISR communication. Capacity must be a power of 2.
-
-```aem
-// queue Name <Type, Capacity> [Policy];
-queue SensorBuffer <i16, 4> [overwrite_old]; // Discards oldest if full
-// queue AnotherQueue <u8, 8> [discard_new]; // Discards new if full
-
-fn DataProducer() {
-    let data = ReadSensor();
-    SensorBuffer.push(data); // Non-blocking
-}
-
-fn DataConsumer() {
-    let mut current_val: i16 = 0;
-    if SensorBuffer.try_fetch(current_val) { // Non-blocking read
-        // Process current_val
-    }
-}
-```
-
-## 7. Interfaces & Structs
-AEM uses static interfaces to enforce contracts without V-table overhead. Structs implement interfaces explicitly.
-
-```aem
-interface DigitalIO {
-    fn set(bool: level);
-    fn toggle();
-    fn read() : bool;
-    fn set_mode(u8: mode); // mode constants: INPUT, OUTPUT, PULLUP, ANALOG
-}
-
-struct MyPin : DigitalIO { // MyPin explicitly implements DigitalIO
-    let pin_number: u8;
-
-    fn set(bool: level) { /* Low-level register write */ }
-    fn toggle() { /* ... */ }
-    fn read() : bool { /* ... */ }
-    fn set_mode(u8: mode) { /* ... */ }
-}
-
-fn operate_pin(DigitalIO: pin_instance) {
-    pin_instance.set(true);
-}
-```
-
-## 8. Generics & Compile-Time Execution
-AEM supports compile-time customization and code generation through `const` generic parameters and `const fn`.
-
-### Const Generic Parameters
-Structs and modules can be made generic over constant values, allowing for highly reusable and efficient code.
-
-```aem
-// A MovingAverage filter generic over its sample size
-struct MovingAverage<const SIZE: u8> {
-    let mut samples: [i16; SIZE];
-    // ...
-}
-
-// A trigonometry module generic over its LUT size
-module trig<const ENTRIES: u16> {
-    // ...
-}
-
-// Usage
-let small_filter = MovingAverage<8>();
-use trig<32>; // Use trig library specialized for a 32-entry LUT
-```
-
-### Compile-Time Functions (`const fn`)
-A function marked `const fn` can be evaluated by the C++ compiler during the compilation process. This allows for complex initializations of `const` variables, such as generating a lookup table (LUT) on the fly.
-
-- **Rule**: `const fn` is translated directly to a C++ `constexpr` function.
-- **Capability**: Enables compile-time generation of data, eliminating the need for pre-calculated tables in source code.
-
-```aem
-const fn factorial(u8: n) : u32 {
-    if (n == 0) { return 1; }
-    return n as u32 * factorial(n - 1);
-}
-
-// Use the const fn to initialize a const variable
-const COMPILE_TIME_VALUE: u32 = factorial(5); // Value is 120
-```
-
-## 9. Error Handling
-AEM uses the "Result Pattern" instead of exceptions. Functions that can fail return a value that must be explicitly checked. A `!` suffix on a type can indicate a fallible return.
-
-```aem
-fn ReadSensor() : i16! { // Can return an i16 or an error state
-    if Hardware.is_ready() {
-        return Hardware.read();
-    }
-    return Error; // Transpiler generates appropriate error state
-}
-
-fn process_data() {
-    let result = ReadSensor();
-    if result.is_error() {
-        // Handle error
-    } else {
-        let value = result.get_value(); // Get the actual value
-        // Process value
-    }
-}
-```
+...
+...
+...
 ## 10. Standard Library Modules
 
 ### `Clock` Module
@@ -212,16 +90,24 @@ fn process_data() {
 *   `Clock.delay_us(u32: us)` - Blocking delay in microseconds.
 *   `Clock.elapsed(u32: start_time, u32: duration) : bool` - Checks if `duration` has passed since `start_time` (handles rollover).
 
-### `GPIO` Interface (for individual pins)
-*   `fn set(bool: level)`
-*   `fn toggle()`
-*   `fn read() : bool`
-*   `fn set_mode(u8: mode)` - `mode` constants: `INPUT`, `OUTPUT`, `PULLUP`, `ANALOG`.
+### `gpio` Module
+*   Provides the `GpioPin` struct for controlling digital I/O.
+*   **Constructor**: `gpio::GpioPin(pin_num: u8, mode: PinMode)`
+*   **Methods**: `.set_high()`, `.set_low()`, `.toggle()`, `.read() -> bool`
+*   **Enums**: `PinMode::{INPUT, OUTPUT, INPUT_PULLUP}`
+
+### `pwm` Module
+*   Provides the `PwmChannel` struct for generating PWM signals.
+*   **Constructor**: `pwm::PwmChannel(pin_num: u8, freq: u32, resolution: u8)`
+*   **Methods**: `.set_duty(u16)`, `.set_frequency(u32)`
 
 ### `ADC` Interface
 *   `fn read_raw() : u16` - Returns raw ADC reading.
 *   `fn read_mv() : u16` - Returns ADC reading scaled to millivolts (e.g., 0-5000).
 *   `fn set_reference(u8: ref_source)` - Sets ADC voltage reference.
+...
+...
+...
 
 ### `Stream` Interface (e.g., UART, USB)
 *   `fn write(u8: byte)`

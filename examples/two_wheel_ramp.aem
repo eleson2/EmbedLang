@@ -1,29 +1,28 @@
-// AEM Example: Two-Wheel Speed Ramp (Scheduler-Friendly)
+// AEM Example: Two-Wheel Speed Ramp (Scheduler-Friendly & Refactored)
 //
 // This program controls two motors, ramping their speed from 0% to 50%
 // and then back down to 0, repeating forever.
 //
-// This version is "non-blocking" and uses a state machine, which is a more
-// scalable and efficient way to write code for a cooperative scheduler.
+// This version demonstrates a clean hardware abstraction where pin objects
+// (`PwmChannel`, `GpioPin`) are instantiated in `main_setup` and composed
+// into higher-level drivers (`L298N_Driver`).
 
 use stdlib::drivers::motor::Motor;
 use stdlib::drivers::l298n::L298N_Driver;
-use stdlib::pwm;
-use stdlib::gpio;
+use stdlib::pwm::{self, PwmChannel};
+use stdlib::gpio::{self, GpioPin, PinMode};
 use stdlib::Clock;
 use stdlib::math;
 
-// 1. Hardware definition (same as before).
+// 1. The `hardware` block now only defines constants for the physical layout.
 hardware {
-    // Left Motor Pins
-    pwm M_Left_Speed at 9 [freq: 1000hz, resolution: 11];
-    gpio M_Left_Dir1 at 2 [output];
-    gpio M_Left_Dir2 at 3 [output];
+    const LEFT_MOTOR_SPEED_PIN: u8 = 9;
+    const LEFT_MOTOR_DIR1_PIN: u8 = 2;
+    const LEFT_MOTOR_DIR2_PIN: u8 = 3;
 
-    // Right Motor Pins
-    pwm M_Right_Speed at 10 [freq: 1000hz, resolution: 11];
-    gpio M_Right_Dir1 at 4 [output];
-    gpio M_Right_Dir2 at 5 [output];
+    const RIGHT_MOTOR_SPEED_PIN: u8 = 10;
+    const RIGHT_MOTOR_DIR1_PIN: u8 = 4;
+    const RIGHT_MOTOR_DIR2_PIN: u8 = 5;
 }
 
 // 2. Global driver instances (same as before).
@@ -31,36 +30,49 @@ let mut motor_left: L298N_Driver;
 let mut motor_right: L298N_Driver;
 
 // 3. Global state variables for the ramp state machine.
-// Instead of an enum, we use a single variable for the step direction.
-let mut ramp_step: i16 = 1; // Start by ramping up
+let mut ramp_step: i16 = 1;
 let mut current_speed: i16 = 0;
 
-// 4. The main setup function.
+// 4. The main setup function now handles all object instantiation.
 fn main_setup() {
-    // Instantiate drivers.
-    motor_left = L298N_Driver(en: M_Left_Speed, in1: M_Left_Dir1, in2: M_Left_Dir2);
-    motor_right = L298N_Driver(en: M_Right_Speed, in1: M_Right_Dir1, in2: M_Right_Dir2);
+    // Create instances of the low-level pin drivers using constants from the hardware block.
+    let left_speed_ch = pwm::PwmChannel(
+        pin_num: LEFT_MOTOR_SPEED_PIN, 
+        freq: 1000, 
+        resolution: 11
+    );
+    let left_dir1_pin = gpio::GpioPin(pin_num: LEFT_MOTOR_DIR1_PIN, mode: PinMode::OUTPUT);
+    let left_dir2_pin = gpio::GpioPin(pin_num: LEFT_MOTOR_DIR2_PIN, mode: PinMode::OUTPUT);
+
+    let right_speed_ch = pwm::PwmChannel(
+        pin_num: RIGHT_MOTOR_SPEED_PIN, 
+        freq: 1000, 
+        resolution: 11
+    );
+    let right_dir1_pin = gpio::GpioPin(pin_num: RIGHT_MOTOR_DIR1_PIN, mode: PinMode::OUTPUT);
+    let right_dir2_pin = gpio::GpioPin(pin_num: RIGHT_MOTOR_DIR2_PIN, mode: PinMode::OUTPUT);
+
+    // Instantiate the higher-level motor drivers by passing them the pin driver objects.
+    motor_left = L298N_Driver(en: left_speed_ch, in1: left_dir1_pin, in2: left_dir2_pin);
+    motor_right = L298N_Driver(en: right_speed_ch, in1: right_dir1_pin, in2: right_dir2_pin);
     
-    // Configure the RampTask to run every 10 milliseconds, then start it.
+    // Configure and start the RampTask (same as before).
     RampTask.setInterval(10);
     RampTask.start();
 }
 
-// 5. The non-blocking task, now with simplified state logic.
+// 5. The RampTask remains unchanged, operating on the abstract `Motor` interface.
 task RampTask {
     const MAX_RAMP_SPEED: i16 = 1023; // 50% speed
 
-    // First, command the motors to the current speed.
     motor_left.set_speed(current_speed);
     motor_right.set_speed(current_speed);
 
-    // Second, update the speed for the next run using the step variable.
     current_speed = current_speed + ramp_step;
 
-    // Third, check the boundaries and flip the step direction if needed.
     if (ramp_step > 0 && current_speed >= MAX_RAMP_SPEED) {
-        ramp_step = -1; // Reached the top, now ramp down.
+        ramp_step = -1;
     } else if (ramp_step < 0 && current_speed <= 0) {
-        ramp_step = 1; // Reached the bottom, now ramp up.
+        ramp_step = 1;
     }
 }

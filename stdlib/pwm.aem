@@ -1,22 +1,21 @@
-// AEM PWM (Pulse-Width Modulation) Interface
+// AEM PWM (Pulse-Width Modulation) Library
 //
-// This module defines the standard interface for controlling PWM hardware.
-// The transpiler is responsible for mapping these abstract calls to the
-// specific hardware timers and pins of the target microcontroller.
+// This module provides a `PwmChannel` struct for controlling PWM hardware.
 
 module pwm {
-    /// Defines a PWM output channel in the `hardware` block.
-    /// Example: `pwm MotorA at 10 [freq: 1000hz, resolution: 10];`
-    ///
-    /// `freq`: The PWM frequency in Hertz.
-    /// `resolution`: The bit-resolution for the duty cycle (e.g., 8 for 0-255). Defaults to 10 if omitted.
+    /// A struct representing a single PWM output channel.
+    /// Its constructor configures the hardware pin and its associated timer.
+    struct PwmChannel {
+        let pin_num: u8;
+        let freq: u32;
+        let resolution: u8;
+    }
 
-    /// Sets the duty cycle of a PWM channel.
+    /// Sets the duty cycle of the PWM channel.
     /// The `duty` value should be in the range of 0 to (2^resolution - 1).
-    /// For example, with 10-bit resolution, the range is 0-1023.
-    fn set_duty(u16: duty);
+    fn set_duty(self, u16: duty);
 
     /// Sets the frequency of the underlying hardware timer for this PWM channel.
     /// Note: Changing the frequency may affect other PWM channels on the same timer.
-    fn set_frequency(u32: freq_hz);
+    fn set_frequency(self, u32: freq_hz);
 }
