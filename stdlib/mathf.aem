@@ -1,0 +1,37 @@
+// AEM Standard Floating-Point Math Library (`mathf`)
+//
+// This module provides common mathematical functions for systems where
+// a floating-point unit (FPU) is available or higher precision is required.
+// Functions are typically overloaded to handle `f32` and `f64` types.
+
+module mathf {
+    // Overloaded functions for f32
+    fn map(f32: x, f32: in_min, f32: in_max, f32: out_min, f32: out_max) : f32;
+    fn clamp(f32: x, f32: min, f32: max) : f32;
+    fn abs(f32: x) : f32;
+    fn min(f32: a, f32: b) : f32;
+    fn max(f32: a, f32: b) : f32;
+    fn sqrt(f32: x) : f32;
+    fn pow(f32: base, f32: exp) : f32;
+    fn exp(f32: x) : f32;
+    fn log(f32: x) : f32;
+    fn log10(f32: x) : f32;
+    fn floor(f32: x) : f32;
+    fn ceil(f32: x) : f32;
+    fn round(f32: x) : f32;
+
+    // Overloaded functions for f64
+    fn map(f64: x, f64: in_min, f64: in_max, f64: out_min, f64: out_max) : f64;
+    fn clamp(f64: x, f64: min, f64: max) : f64;
+    fn abs(f64: x) : f64;
+    fn min(f64: a, f64: b) : f64;
+    fn max(f64: a, f64: b) : f64;
+    fn sqrt(f64: x) : f64;
+    fn pow(f64: base, f64: exp) : f64;
+    fn exp(f64: x) : f64;
+    fn log(f64: x) : f64;
+    fn log10(f64: x) : f64;
+    fn floor(f64: x) : f64;
+    fn ceil(f64: x) : f64;
+    fn round(f64: x) : f64;
+}

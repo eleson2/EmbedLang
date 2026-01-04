@@ -1,0 +1,26 @@
+// AEM Standard Integer Math Library (`math`)
+//
+// This module provides core integer-only mathematical utilities.
+// All operations are designed to be fast and safe for embedded systems
+// without requiring a floating-point unit.
+
+module math {
+    /// Re-maps a number from one range to another using integer arithmetic.
+    fn map(i32: x, i32: in_min, i32: in_max, i32: out_min, i32: out_max) : i32;
+
+    /// Constrains a number to be within a specified range.
+    fn clamp(i32: x, i32: min, i32: max) : i32;
+
+    /// Returns the absolute value of a number.
+    fn abs(i32: x) : i32;
+
+    /// Returns the smaller of two numbers.
+    fn min(i32: a, i32: b) : i32;
+
+    /// Returns the larger of two numbers.
+    fn max(i32: a, i32: b) : i32;
+
+    /// Calculates the integer square root of a non-negative number.
+    /// Returns 0 if the input is negative.
+    fn sqrt(u32: x) : u16;
+}

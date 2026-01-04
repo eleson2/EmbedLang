@@ -1,0 +1,26 @@
+// AEM Standard Floating-Point Trigonometry Library (`trigf`)
+//
+// This module provides traditional trigonometric functions for systems
+// where a floating-point unit (FPU) is available.
+// Angles are expressed in radians.
+// Functions are typically overloaded to handle `f32` and `f64` types.
+
+module trigf {
+    // Overloaded functions for f32
+    fn sin(f32: angle) : f32;
+    fn cos(f32: angle) : f32;
+    fn tan(f32: angle) : f32;
+    fn asin(f32: value) : f32;
+    fn acos(f32: value) : f32;
+    fn atan(f32: value) : f32;
+    fn atan2(f32: y, f32: x) : f32;
+
+    // Overloaded functions for f64
+    fn sin(f64: angle) : f64;
+    fn cos(f64: angle) : f64;
+    fn tan(f64: angle) : f64;
+    fn asin(f64: value) : f64;
+    fn acos(f64: value) : f64;
+    fn atan(f64: value) : f64;
+    fn atan2(f64: y, f64: x) : f64;
+}
