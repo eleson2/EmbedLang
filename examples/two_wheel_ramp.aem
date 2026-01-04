@@ -1,0 +1,72 @@
+// AEM Example: Two-Wheel Speed Ramp
+//
+// This program controls two motors, ramping their speed from 0% to 50%
+// and then back down to 0, repeating forever. It demonstrates the use
+// of the hardware manifest, driver instantiation, and scheduled tasks.
+
+use stdlib::drivers::motor::Motor;
+use stdlib::drivers::l298n::L298N_Driver;
+use stdlib::pwm;
+use stdlib::gpio;
+use stdlib::Clock;
+use stdlib::math;
+
+// 1. Define all the physical pins required for two L298N-driven motors.
+hardware {
+    // Left Motor Pins
+    pwm M_Left_Speed at 9 [freq: 1000hz, resolution: 11]; // 11-bit resolution for 0-2047
+    gpio M_Left_Dir1 at 2 [output];
+    gpio M_Left_Dir2 at 3 [output];
+
+    // Right Motor Pins
+    pwm M_Right_Speed at 10 [freq: 1000hz, resolution: 11];
+    gpio M_Right_Dir1 at 4 [output];
+    gpio M_Right_Dir2 at 5 [output];
+}
+
+// 2. Declare global variables to hold the initialized driver structs.
+let mut motor_left: L298N_Driver;
+let mut motor_right: L298N_Driver;
+
+// 3. The main setup function, which runs once at startup.
+fn main_setup() {
+    // Instantiate the drivers by passing in the hardware resources defined above.
+    motor_left = L298N_Driver(
+        en: M_Left_Speed, 
+        in1: M_Left_Dir1, 
+        in2: M_Left_Dir2
+    );
+    motor_right = L298N_Driver(
+        en: M_Right_Speed, 
+        in1: M_Right_Dir1, 
+        in2: M_Right_Dir2
+    );
+    
+    // Start the task that controls the motors.
+    RampTask.start();
+}
+
+// 4. The task containing the main control loop.
+task RampTask {
+    // Set the speed to 50% of the max positive value (2047).
+    const MAX_RAMP_SPEED: i16 = 1023; 
+    const STEP_DELAY_MS: u32 = 10;
+    
+    // This loop will run forever.
+    loop {
+        // Ramp up from 0 to 50% speed
+        for i in 0..=MAX_RAMP_SPEED {
+            motor_left.set_speed(i);
+            motor_right.set_speed(i);
+            Clock.delay_ms(STEP_DELAY_MS);
+        }
+
+        // Ramp down from 50% to 0
+        for i in 0..=MAX_RAMP_SPEED {
+            let speed = MAX_RAMP_SPEED - i;
+            motor_left.set_speed(speed);
+            motor_right.set_speed(speed);
+            Clock.delay_ms(STEP_DELAY_MS);
+        }
+    }
+}
