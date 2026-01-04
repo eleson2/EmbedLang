@@ -1,11 +1,11 @@
-// AEM Example: Two-Wheel Speed Ramp (Scheduler-Friendly & Refactored)
+// AEM Example: Two-Wheel Ramp (Interface Demo)
 //
-// This program controls two motors, ramping their speed from 0% to 50%
-// and then back down to 0, repeating forever.
+// This program controls two motors, ramping their speed up and down.
 //
-// This version demonstrates a clean hardware abstraction where pin objects
-// (`PwmChannel`, `GpioPin`) are instantiated in `main_setup` and composed
-// into higher-level drivers (`L298N_Driver`).
+// This version demonstrates the power of "programming to an interface."
+// A generic `set_drive_speed` function is created to operate on any
+// type that implements the `Motor` interface, decoupling the core logic
+// from any specific hardware driver.
 
 use stdlib::drivers::motor::Motor;
 use stdlib::drivers::l298n::L298N_Driver;
@@ -14,7 +14,7 @@ use stdlib::gpio::{self, GpioPin, PinMode};
 use stdlib::Clock;
 use stdlib::math;
 
-// 1. The `hardware` block now only defines constants for the physical layout.
+// 1. The `hardware` block (same as before).
 hardware {
     const LEFT_MOTOR_SPEED_PIN: u8 = 9;
     const LEFT_MOTOR_DIR1_PIN: u8 = 2;
@@ -29,45 +29,46 @@ hardware {
 let mut motor_left: L298N_Driver;
 let mut motor_right: L298N_Driver;
 
-// 3. Global state variables for the ramp state machine.
+// 3. Global state variables (same as before).
 let mut ramp_step: i16 = 1;
 let mut current_speed: i16 = 0;
 
-// 4. The main setup function now handles all object instantiation.
+// 4. A generic helper function that operates on the `Motor` interface.
+// This function does not know about `L298N_Driver`; it will work with any
+// driver that fulfills the `Motor` contract.
+fn set_drive_speed(left: Motor, right: Motor, speed: i16) {
+    left.set_speed(speed);
+    right.set_speed(speed);
+}
+
+// 5. The main setup function (same as before).
 fn main_setup() {
-    // Create instances of the low-level pin drivers using constants from the hardware block.
-    let left_speed_ch = pwm::PwmChannel(
-        pin_num: LEFT_MOTOR_SPEED_PIN, 
-        freq: 1000, 
-        resolution: 11
-    );
+    // Create instances of the low-level pin drivers.
+    let left_speed_ch = pwm::PwmChannel(pin_num: LEFT_MOTOR_SPEED_PIN, freq: 1000, resolution: 11);
     let left_dir1_pin = gpio::GpioPin(pin_num: LEFT_MOTOR_DIR1_PIN, mode: PinMode::OUTPUT);
     let left_dir2_pin = gpio::GpioPin(pin_num: LEFT_MOTOR_DIR2_PIN, mode: PinMode::OUTPUT);
 
-    let right_speed_ch = pwm::PwmChannel(
-        pin_num: RIGHT_MOTOR_SPEED_PIN, 
-        freq: 1000, 
-        resolution: 11
-    );
+    let right_speed_ch = pwm::PwmChannel(pin_num: RIGHT_MOTOR_SPEED_PIN, freq: 1000, resolution: 11);
     let right_dir1_pin = gpio::GpioPin(pin_num: RIGHT_MOTOR_DIR1_PIN, mode: PinMode::OUTPUT);
     let right_dir2_pin = gpio::GpioPin(pin_num: RIGHT_MOTOR_DIR2_PIN, mode: PinMode::OUTPUT);
 
-    // Instantiate the higher-level motor drivers by passing them the pin driver objects.
+    // Instantiate the concrete drivers.
     motor_left = L298N_Driver(en: left_speed_ch, in1: left_dir1_pin, in2: left_dir2_pin);
     motor_right = L298N_Driver(en: right_speed_ch, in1: right_dir1_pin, in2: right_dir2_pin);
     
-    // Configure and start the RampTask (same as before).
+    // Configure and start the RampTask.
     RampTask.setInterval(10);
     RampTask.start();
 }
 
-// 5. The RampTask remains unchanged, operating on the abstract `Motor` interface.
+// 6. The RampTask now uses the generic helper function.
 task RampTask {
     const MAX_RAMP_SPEED: i16 = 1023; // 50% speed
 
-    motor_left.set_speed(current_speed);
-    motor_right.set_speed(current_speed);
+    // Call the generic helper, passing our concrete driver instances.
+    set_drive_speed(motor_left, motor_right, current_speed);
 
+    // Update state for the next run.
     current_speed = current_speed + ramp_step;
 
     if (ramp_step > 0 && current_speed >= MAX_RAMP_SPEED) {
