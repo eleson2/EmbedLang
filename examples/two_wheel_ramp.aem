@@ -1,8 +1,10 @@
-// AEM Example: Two-Wheel Speed Ramp
+// AEM Example: Two-Wheel Speed Ramp (Scheduler-Friendly)
 //
 // This program controls two motors, ramping their speed from 0% to 50%
-// and then back down to 0, repeating forever. It demonstrates the use
-// of the hardware manifest, driver instantiation, and scheduled tasks.
+// and then back down to 0, repeating forever.
+//
+// This version is "non-blocking" and uses a state machine, which is a more
+// scalable and efficient way to write code for a cooperative scheduler.
 
 use stdlib::drivers::motor::Motor;
 use stdlib::drivers::l298n::L298N_Driver;
@@ -11,10 +13,10 @@ use stdlib::gpio;
 use stdlib::Clock;
 use stdlib::math;
 
-// 1. Define all the physical pins required for two L298N-driven motors.
+// 1. Hardware definition (same as before).
 hardware {
     // Left Motor Pins
-    pwm M_Left_Speed at 9 [freq: 1000hz, resolution: 11]; // 11-bit resolution for 0-2047
+    pwm M_Left_Speed at 9 [freq: 1000hz, resolution: 11];
     gpio M_Left_Dir1 at 2 [output];
     gpio M_Left_Dir2 at 3 [output];
 
@@ -24,49 +26,47 @@ hardware {
     gpio M_Right_Dir2 at 5 [output];
 }
 
-// 2. Declare global variables to hold the initialized driver structs.
+// 2. Global driver instances (same as before).
 let mut motor_left: L298N_Driver;
 let mut motor_right: L298N_Driver;
 
-// 3. The main setup function, which runs once at startup.
+// 3. Global state variables for the ramp state machine.
+enum RampDirection { UP, DOWN }
+let mut ramp_direction = RampDirection::UP;
+let mut current_speed: i16 = 0;
+
+// 4. The main setup function.
 fn main_setup() {
-    // Instantiate the drivers by passing in the hardware resources defined above.
-    motor_left = L298N_Driver(
-        en: M_Left_Speed, 
-        in1: M_Left_Dir1, 
-        in2: M_Left_Dir2
-    );
-    motor_right = L298N_Driver(
-        en: M_Right_Speed, 
-        in1: M_Right_Dir1, 
-        in2: M_Right_Dir2
-    );
+    // Instantiate drivers.
+    motor_left = L298N_Driver(en: M_Left_Speed, in1: M_Left_Dir1, in2: M_Left_Dir2);
+    motor_right = L298N_Driver(en: M_Right_Speed, in1: M_Right_Dir1, in2: M_Right_Dir2);
     
-    // Start the task that controls the motors.
+    // Configure the RampTask to run every 10 milliseconds, then start it.
+    // The scheduler will now automatically call the task at this interval.
+    RampTask.setInterval(10); // Assumes 'ms' is the default unit
     RampTask.start();
 }
 
-// 4. The task containing the main control loop.
+// 5. The non-blocking task. It runs quickly and exits.
 task RampTask {
-    // Set the speed to 50% of the max positive value (2047).
-    const MAX_RAMP_SPEED: i16 = 1023; 
-    const STEP_DELAY_MS: u32 = 10;
-    
-    // This loop will run forever.
-    loop {
-        // Ramp up from 0 to 50% speed
-        for i in 0..=MAX_RAMP_SPEED {
-            motor_left.set_speed(i);
-            motor_right.set_speed(i);
-            Clock.delay_ms(STEP_DELAY_MS);
-        }
+    const MAX_RAMP_SPEED: i16 = 1023; // 50% speed
 
-        // Ramp down from 50% to 0
-        for i in 0..=MAX_RAMP_SPEED {
-            let speed = MAX_RAMP_SPEED - i;
-            motor_left.set_speed(speed);
-            motor_right.set_speed(speed);
-            Clock.delay_ms(STEP_DELAY_MS);
+    // First, command the motors to the current speed.
+    motor_left.set_speed(current_speed);
+    motor_right.set_speed(current_speed);
+
+    // Second, update the state for the *next* time the task runs.
+    if (ramp_direction == RampDirection::UP) {
+        current_speed = current_speed + 1;
+        // If we've reached the top, flip the direction.
+        if (current_speed >= MAX_RAMP_SPEED) {
+            ramp_direction = RampDirection::DOWN;
+        }
+    } else { // Ramping DOWN
+        current_speed = current_speed - 1;
+        // If we've reached the bottom, flip the direction.
+        if (current_speed <= 0) {
+            ramp_direction = RampDirection::UP;
         }
     }
 }
