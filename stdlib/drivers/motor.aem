@@ -1,0 +1,26 @@
+// AEM Generic Motor Driver Interface
+//
+// This interface defines a standard contract for controlling DC motors,
+// abstracting away the specific hardware driver (e.g., L298N, TB6612FNG).
+// It supports speed, direction, and braking control.
+
+interface Motor {
+    /// Sets the motor speed and direction.
+    ///
+    /// The speed is an i16 value from -10000 to 10000, representing a percentage
+    /// of full power from -100.00% to +100.00%.
+    ///
+    /// A positive value indicates forward motion.
+    /// A negative value indicates reverse motion.
+    /// A value of 0 will coast the motor.
+    fn set_speed(i16: speed);
+
+    /// Stops the motor by letting it spin down freely (disengages the H-bridge).
+    /// This is equivalent to `set_speed(0)`.
+    fn coast();
+
+    /// Actively brakes the motor, providing a more immediate stop.
+    /// The specific implementation (e.g., shorting motor terminals) depends
+    /// on the hardware driver.
+    fn brake();
+}

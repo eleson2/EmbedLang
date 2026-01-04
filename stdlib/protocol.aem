@@ -1,0 +1,28 @@
+// AEM Protocol & Serialization Library
+//
+// This module provides tools to safely and efficiently serialize AEM structs
+// into byte arrays for transmission and deserialize them back. This helps
+// prevent common errors related to manual data packing and parsing.
+
+module protocol {
+    /// An interface that structs can implement to signify they are serializable.
+    /// This allows the compiler to verify that only valid data structures
+    /// are passed to the serialization functions.
+    interface Serializable {}
+
+    /// Serializes a struct that implements `Serializable` into a provided byte buffer.
+    /// The transpiler will generate the specific byte-packing logic for the given struct.
+    ///
+    /// Returns the number of bytes written to the buffer, or an error if the
+    /// buffer is too small.
+    fn serialize(Serializable: data, mut buffer: [u8]) : u16!;
+
+    /// Deserializes a byte buffer back into a mutable struct that implements `Serializable`.
+    /// The transpiler generates the byte-unpacking logic.
+    ///
+    /// The `out_data` struct will be populated with the parsed values.
+    ///
+    // Returns the number of bytes read from the buffer, or an error if the
+    // data is malformed or inconsistent.
+    fn deserialize(buffer: [u8], mut out_data: Serializable) : u16!;
+}

@@ -1,0 +1,58 @@
+// AEM Signal Processing & Filter Library
+//
+// This module provides a collection of standard, reusable components for
+// processing digital signals, such as smoothing noisy sensor data and
+// implementing control feedback loops.
+
+module signal {
+
+    /// A simple and efficient low-pass filter for smoothing data.
+    struct ExponentialFilter<Type> {
+        let alpha: u16; // Scaling factor, e.g., 1-1023 for 10-bit precision.
+        let mut last_value: Type;
+
+        /// Adds a new raw value to the filter.
+        fn add(Type: new_value);
+        /// Returns the current filtered value.
+        fn get() : Type;
+    }
+
+    /// A filter that averages the last 'N' samples. 'N' is a compile-time constant.
+    struct MovingAverage<Type, const N: u8> {
+        let mut samples: [Type; N];
+        let mut head: u8;
+
+        /// Adds a new raw value to the filter's sample set.
+        fn add(Type: new_value);
+        /// Returns the current averaged value.
+        fn get_average() : Type;
+    }
+
+    /// A standard Proportional-Integral-Derivative (PID) controller.
+    struct PIDController {
+        let Kp: i32; // Proportional gain, scaled
+        let Ki: i32; // Integral gain, scaled
+        let Kd: i32; // Derivative gain, scaled
+        
+        let mut integral: i32;
+        let mut last_error: i16;
+
+        /// Calculates the control output based on the target and current values.
+        /// Returns a control signal (e.g., for a motor or heater).
+        fn calculate(i16: target, i16: current) : i16;
+    }
+
+    /// A utility to denoise button presses or other binary inputs.
+    struct Debouncer {
+        let mut last_state: bool;
+        let mut last_change_time: u32;
+        let delay_ms: u32;
+
+        /// Updates the debouncer with the current raw state of the input.
+        fn update(bool: raw_state);
+        /// Returns true only on the rising edge (transition from false to true).
+        fn rising_edge() : bool;
+        /// Returns the current debounced (stable) state.
+        fn get_state() : bool;
+    }
+}
