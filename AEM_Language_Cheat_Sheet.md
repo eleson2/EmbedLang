@@ -36,7 +36,7 @@ AEM uses strictly defined integer types to ensure cross-platform consistency and
 | `queue`       | Declares a statically allocated, single-writer, single-reader buffer.                                                                | `queue Readings <i16, 16> [overwrite_old];`    |
 | `fn`          | Defines a function. Supports hoisting.                                                                                               | `fn calculate(i16: val) : i16 { return val; }` |
 | `let`/`let mut` | Declares an immutable (`let`) or mutable (`let mut`) variable or constant.                                                           | `let count: u8 = 0; let mut state: bool = false;` |
-| `const`       | Declares a compile-time constant.                                                                                                    | `const MAX_VAL: u16 = 255;`                    |
+| `const`       | Declares a compile-time constant, for single values or arrays. | `const MAX_VAL: u16 = 255;` `const LUT: [u8; 4] = [0, 1, 2, 3];` |
 | `module`      | Implicitly defined by file structure (`my_file.aem` creates `my_file::` namespace).                                                  | `use stdlib::Clock;`                           |
 | `use`         | Imports modules or specific symbols into the current scope.                                                                          | `use my_module::MyStruct;`                     |
 | `return`      | Returns a value from a function.                                                                                                     | `return true;`                                 |

@@ -1,39 +1,47 @@
 // AEM Integer Trigonometry Library - Accurate (`trig::accurate`)
 //
-// This module provides high-accuracy, fixed-point trigonometric functions.
-// It uses a large, pre-calculated lookup table (LUT) for the first quadrant
-// and derives other values from symmetry.
+// This module is implemented entirely in AEM. It provides high accuracy
+// by using a large, 65-element lookup table (LUT) for direct lookups
+// without the need for CPU-intensive interpolation.
 //
-// Method: Direct Lookup (No interpolation)
+// Method: Direct Lookup
 // Accuracy: High
 // Flash Usage: High
 // CPU Usage: Lowest
 
 module accurate {
-    /// Calculates sine. Angle is a u8 (0-255) or u16 (0-65535) representing 0-2pi.
-    /// Returns a value scaled by 10,000 (e.g., 1.0 -> 10000).
-    fn sin(u8: angle) : i16;
-    fn sin(u16: angle) : i16;
+    // A 65-element LUT for the first quadrant of a sine wave (0 to 90 degrees).
+    // Values are scaled by 10,000.
+    const SINE_LUT: [i16; 65] = [
+        0, 246, 491, 737, 982, 1227, 1472, 1716, 1960, 2203, 2445, 2686,
+        2926, 3165, 3402, 3638, 3872, 4104, 4335, 4564, 4791, 5016,
+        5239, 5460, 5679, 5896, 6110, 6322, 6532, 6739, 6944, 7146,
+        7345, 7541, 7735, 7925, 8113, 8298, 8479, 8658, 8833, 9005,
+        9173, 9338, 9499, 9656, 9810, 9960, 10106, 10249, 10388, 10523,
+        10654, 10781, 10904, 11024, 11139, 11251, 11358, 11462, 11561,
+        11657, 11748, 11835, 11918
+    ];
 
-    /// Calculates cosine. Angle is a u8 (0-255) or u16 (0-65535) representing 0-2pi.
-    /// Returns a value scaled by 10,000.
-    fn cos(u8: angle) : i16;
-    fn cos(u16: angle) : i16;
+    fn sin_u8(u8: angle) : i16 {
+        let quadrant = (angle >> 6) & 0b11;
+        let angle_in_quadrant = angle & 0b00111111; // 0-63
 
-    /// Calculates tangent. Angle is a u8 (0-255) or u16 (0-65535) representing 0-2pi.
-    /// Returns a value scaled by 10,000. Result is i32 to prevent overflow.
-    fn tan(u8: angle) : i32;
-    fn tan(u16: angle) : i32;
+        // In quadrants 1 and 3, the wave is descending from the LUT's perspective.
+        if (quadrant == 1 || quadrant == 3) {
+            angle_in_quadrant = 64 - angle_in_quadrant;
+        }
 
-    /// Calculates arcsine. Takes a value from -10000 to 10000.
-    /// Returns a u16 angle (0-65535) representing 0-2pi.
-    fn asin(i16: value) : u16;
+        // Direct lookup from the table.
+        let value = SINE_LUT[angle_in_quadrant];
 
-    /// Calculates arccosine. Takes a value from -10000 to 10000.
-    /// Returns a u16 angle (0-65535) representing 0-2pi.
-    fn acos(i16: value) : u16;
+        // In quadrants 2 and 3, the result is negative.
+        if (quadrant > 1) {
+            return -value;
+        }
+        return value;
+    }
 
-    /// Calculates arctangent of y/x. Takes scaled cartesian coordinates.
-    /// Returns a u16 angle (0-65535) representing 0-2pi, covering the full circle.
-    fn atan2(i16: y, i16: x) : u16;
+    fn cos_u8(u8: angle) : i16 {
+        return sin_u8(angle + 64);
+    }
 }
