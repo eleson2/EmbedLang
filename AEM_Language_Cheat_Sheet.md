@@ -50,6 +50,21 @@ AEM uses strictly defined integer types to ensure cross-platform consistency and
 | `match`       | Exhaustive pattern matching. Replaces C++ `switch`. No fall-through.                                                                | `match x { 0..10 => { ... }, _ => { ... } }`   |
 | `as`          | Explicit type casting.                                                                                                               | `(my_i8 as u16) + (my_u8 as u16)`              |
 
+### Built-in Functions
+AEM provides a few intrinsic functions that directly map to low-level hardware access or compiler features. These do not require a `use` statement.
+
+*   `volatile_read<T>(address: u32) : T`
+    *   **Purpose**: Reads a value of type `T` from a specific memory `address`.
+    *   **Usage**: Used for direct interaction with memory-mapped hardware registers. The `volatile` nature prevents the compiler from optimizing away the read.
+    *   **Transpiles to**: `*(volatile T*)address` in C++.
+    *   **Example**: `let reg_value = volatile_read<u32>(0x40021000);`
+
+*   `volatile_write<T>(address: u32, value: T)`
+    *   **Purpose**: Writes a `value` of type `T` to a specific memory `address`.
+    *   **Usage**: Used for direct interaction with memory-mapped hardware registers. The `volatile` nature prevents the compiler from optimizing away the write.
+    *   **Transpiles to**: `*(volatile T*)address = value;` in C++.
+    *   **Example**: `volatile_write<u32>(0x40021000, new_value);`
+
 ## 4. Hardware Manifest (`hardware` block)
 Defines static mappings of logical names to physical hardware.
 

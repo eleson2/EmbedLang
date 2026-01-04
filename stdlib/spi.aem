@@ -1,0 +1,39 @@
+// AEM SPI (Serial Peripheral Interface) Module
+//
+// This module provides an interface for communicating with devices
+// using the Serial Peripheral Interface (SPI) protocol. SPI is a
+// synchronous serial communication interface specification used for
+// short-distance communication, primarily in embedded systems.
+
+module spi {
+    // Configuration options for an SPI bus, typically defined in the `hardware` block.
+    // Example: `spi MyBus at SPI0 [freq: 4_000_000, mode: 0];`
+    //
+    // `freq`: The clock frequency of the SPI bus in Hertz (e.g., 4_000_000 for 4MHz).
+    // `mode`: The SPI mode (0, 1, 2, or 3), which defines the clock polarity (CPOL)
+    //         and clock phase (CPHA).
+    //         - Mode 0: CPOL=0, CPHA=0
+    //         - Mode 1: CPOL=0, CPHA=1
+    //         - Mode 2: CPOL=1, CPHA=0
+    //         - Mode 3: CPOL=1, CPHA=1
+
+    /// An interface representing a specific device connected to an SPI bus,
+    /// typically controlled by a Chip Select (CS) pin.
+    interface SPI_Device {
+        /// Performs a single, full-duplex SPI transfer.
+        /// Sends one byte and simultaneously receives one byte.
+        /// The Chip Select (CS) pin is typically asserted before the transfer
+        /// and de-asserted after, depending on the driver's implementation.
+        fn transfer(u8: byte_to_send) : u8;
+
+        /// Sends a buffer of bytes over SPI. Received bytes are ignored.
+        /// The Chip Select (CS) pin is kept asserted during the entire buffer transfer.
+        fn write_buffer(buffer: [u8]);
+
+        /// Performs a full-duplex transfer of a buffer.
+        /// Sends bytes from `write_buf` and simultaneously reads bytes into `read_buf`.
+        /// Both buffers must be of the same length.
+        /// The Chip Select (CS) pin is kept asserted during the entire transfer.
+        fn transfer_buffer(write_buf: [u8], mut read_buf: [u8]);
+    }
+}
