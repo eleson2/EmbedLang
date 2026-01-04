@@ -31,8 +31,8 @@ let mut motor_left: L298N_Driver;
 let mut motor_right: L298N_Driver;
 
 // 3. Global state variables for the ramp state machine.
-enum RampDirection { UP, DOWN }
-let mut ramp_direction = RampDirection::UP;
+// Instead of an enum, we use a single variable for the step direction.
+let mut ramp_step: i16 = 1; // Start by ramping up
 let mut current_speed: i16 = 0;
 
 // 4. The main setup function.
@@ -42,12 +42,11 @@ fn main_setup() {
     motor_right = L298N_Driver(en: M_Right_Speed, in1: M_Right_Dir1, in2: M_Right_Dir2);
     
     // Configure the RampTask to run every 10 milliseconds, then start it.
-    // The scheduler will now automatically call the task at this interval.
-    RampTask.setInterval(10); // Assumes 'ms' is the default unit
+    RampTask.setInterval(10);
     RampTask.start();
 }
 
-// 5. The non-blocking task. It runs quickly and exits.
+// 5. The non-blocking task, now with simplified state logic.
 task RampTask {
     const MAX_RAMP_SPEED: i16 = 1023; // 50% speed
 
@@ -55,18 +54,13 @@ task RampTask {
     motor_left.set_speed(current_speed);
     motor_right.set_speed(current_speed);
 
-    // Second, update the state for the *next* time the task runs.
-    if (ramp_direction == RampDirection::UP) {
-        current_speed = current_speed + 1;
-        // If we've reached the top, flip the direction.
-        if (current_speed >= MAX_RAMP_SPEED) {
-            ramp_direction = RampDirection::DOWN;
-        }
-    } else { // Ramping DOWN
-        current_speed = current_speed - 1;
-        // If we've reached the bottom, flip the direction.
-        if (current_speed <= 0) {
-            ramp_direction = RampDirection::UP;
-        }
+    // Second, update the speed for the next run using the step variable.
+    current_speed = current_speed + ramp_step;
+
+    // Third, check the boundaries and flip the step direction if needed.
+    if (ramp_step > 0 && current_speed >= MAX_RAMP_SPEED) {
+        ramp_step = -1; // Reached the top, now ramp down.
+    } else if (ramp_step < 0 && current_speed <= 0) {
+        ramp_step = 1; // Reached the bottom, now ramp up.
     }
 }
