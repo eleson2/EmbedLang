@@ -7,11 +7,12 @@
 interface Motor {
     /// Sets the motor speed and direction.
     ///
-    /// The speed is an i16 value from -10000 to 10000, representing a percentage
-    /// of full power from -100.00% to +100.00%.
+    /// The speed is an i16 value from -2047 to +2047 (11-bit resolution + sign).
+    /// This range is chosen to allow for fast, efficient scaling to lower-resolution
+    /// hardware timers using bit-shifts instead of division.
     ///
-    /// A positive value indicates forward motion.
-    /// A negative value indicates reverse motion.
+    /// A positive value indicates forward motion (+1 to +2047).
+    /// A negative value indicates reverse motion (-1 to -2047).
     /// A value of 0 will coast the motor.
     fn set_speed(i16: speed);
 
