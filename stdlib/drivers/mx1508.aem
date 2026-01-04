@@ -1,0 +1,50 @@
+// AEM Driver for the MX1508 H-Bridge Motor Controller
+//
+// This module provides a concrete implementation of the generic `Motor`
+// interface for the MX1508 dual H-bridge driver. Its control logic
+// is functionally identical to the L298N.
+
+use stdlib::drivers::motor::Motor;
+use stdlib::pwm;
+use stdlib::gpio;
+
+struct MX1508_Driver : Motor {
+    // The MX1508 requires one PWM pin for speed and two GPIOs for direction.
+    let en: pwm;  // Often labeled 'PWM' on breakout boards
+    let in1: gpio;
+    let in2:gpio;
+
+    /// Sets the motor speed and direction based on the i16 input.
+    fn set_speed(i16: speed) {
+        let clamped_speed = math::clamp(speed, -2047, 2047);
+
+        if (clamped_speed > 0) {
+            // Forward motion
+            self.in1.set(true);
+            self.in2.set(false);
+            self.en.set_duty(clamped_speed as u16);
+        } else if (clamped_speed < 0) {
+            // Reverse motion
+            self.in1.set(false);
+            self.in2.set(true);
+            self.en.set_duty(-clamped_speed as u16);
+        } else {
+            // Coast
+            self.coast();
+        }
+    }
+
+    /// Disengages the motor by setting the PWM duty cycle to 0.
+    fn coast() {
+        self.en.set_duty(0);
+    }
+
+    /// Actively brakes the motor. For many H-bridges like the MX1508,
+    /// setting both inputs to the same state (high or low) causes braking.
+    fn brake() {
+        self.in1.set(true);
+        self.in2.set(true);
+        // Ensure the PWM pin is active to enable braking.
+        self.en.set_duty(2047);
+    }
+}

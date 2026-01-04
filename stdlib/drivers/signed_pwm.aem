@@ -1,0 +1,40 @@
+// AEM Driver for a Signed PWM Motor Controller / ESC
+//
+// This module implements the `Motor` interface for controllers that use
+// a single PWM signal where the duty cycle indicates both speed and direction.
+// (e.g., 50% duty = stop, 100% duty = full forward, 0% duty = full reverse).
+
+use stdlib::drivers::motor::Motor;
+use stdlib::pwm;
+
+struct SignedPWM_Driver : Motor {
+    // This driver only requires a single PWM pin.
+    let pwm_pin: pwm;
+    // The PWM resolution (e.g., 4095 for 12-bit).
+    let resolution: u16;
+
+    /// Sets the motor speed by mapping the -2047 to +2047 range
+    /// to the full PWM duty cycle range.
+    fn set_speed(i16: speed) {
+        let clamped_speed = math::clamp(speed, -2047, 2047);
+        
+        // Linearly map the speed from [-2047, 2047] to [0, resolution].
+        // The midpoint (2048 for a 12-bit resolution) is stop.
+        // formula: duty = ((speed + 2047) * resolution) / 4094
+        let duty_i32 = ( (clamped_speed as i32 + 2047) * self.resolution as i32 ) / 4094;
+        
+        self.pwm_pin.set_duty(duty_i32 as u16);
+    }
+
+    /// Stops the motor by setting the duty cycle to the midpoint (50%).
+    fn coast() {
+        self.pwm_pin.set_duty(self.resolution / 2);
+    }
+
+    /// For this type of driver, 'brake' is often not a distinct hardware
+    /// action. We implement it as an alias for `coast`. A more advanced
+    // implementation could potentially send a quick reverse pulse.
+    fn brake() {
+        self.coast();
+    }
+}

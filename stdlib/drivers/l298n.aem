@@ -1,0 +1,54 @@
+// AEM Driver for the L298N H-Bridge Motor Controller
+//
+// This module provides a concrete implementation of the generic `Motor`
+// interface for the common L298N dual H-bridge driver.
+
+use stdlib::drivers::motor::Motor;
+use stdlib::pwm;
+use stdlib::gpio;
+
+struct L298N_Driver : Motor {
+    // The L298N requires one PWM pin for speed and two GPIOs for direction.
+    let en: pwm;
+    let in1: gpio;
+    let in2: gpio;
+
+    /// Sets the motor speed and direction based on the i16 input.
+    fn set_speed(i16: speed) {
+        // Clamp the input speed to the valid range.
+        let clamped_speed = math::clamp(speed, -2047, 2047);
+
+        if (clamped_speed > 0) {
+            // Forward motion
+            self.in1.set(true);
+            self.in2.set(false);
+            // Map the positive speed value to the PWM duty cycle.
+            // Assumes the PWM resolution is also 11-bit (0-2047).
+            self.en.set_duty(clamped_speed as u16);
+        } else if (clamped_speed < 0) {
+            // Reverse motion
+            self.in1.set(false);
+            self.in2.set(true);
+            // Use the absolute value for the PWM duty cycle.
+            self.en.set_duty(-clamped_speed as u16);
+        } else {
+            // Speed is 0, so coast the motor.
+            self.coast();
+        }
+    }
+
+    /// Disengages the motor by setting the PWM duty cycle to 0.
+    fn coast() {
+        self.en.set_duty(0);
+    }
+
+    /// Actively brakes the motor by setting both direction pins to the same state.
+    fn brake() {
+        // Setting both inputs low is a common way to brake.
+        self.in1.set(false);
+        self.in2.set(false);
+        // Ensure the PWM pin is high to enable the braking action.
+        // Assumes max duty for braking.
+        self.en.set_duty(2047); 
+    }
+}
