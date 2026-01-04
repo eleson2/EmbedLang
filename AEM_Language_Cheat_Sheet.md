@@ -41,6 +41,7 @@ AEM uses strictly defined integer types to ensure cross-platform consistency and
 | `module`      | Defines a namespace. Can be generic over `const` parameters.                                                                         | `use trig<16>;`                                |
 | `use`         | Imports modules or specific symbols into the current scope.                                                                          | `use my_module::MyStruct;`                     |
 | `return`      | Returns a value from a function.                                                                                                     | `return true;`                                 |
+| `self`        | Refers to the current `struct` instance within a method.                                                                             | `self.field = 5;`                              |
 | `if`/`else if`/`else` | Conditional branching. Mandatory braces `{}`.                                                                                | `if (x > 0) { ... } else { ... }`              |
 | `loop`        | Infinite loop.                                                                                                                       | `loop { ... }`                                 |
 | `for`         | Range-based loop.                                                                                                                    | `for i in 0..10 { ... }`                       |
