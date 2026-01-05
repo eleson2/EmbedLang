@@ -1,7 +1,122 @@
+// AEM Example: Solar Air Heater Controller
+//
+// This program implements the full logic for a solar air heater. It reads
+// temperatures from three sensors, uses a PID regulator to control a fan,
+// and enforces safety rules. It is a showcase of AEM's features for
+// building robust, real-world embedded applications.
+
+// 1. Module Imports: Explicitly declare all dependencies.
+use stdlib::Clock;
+use stdlib::math;
+use stdlib::gpio::{self, GpioPin, PinMode};
+use stdlib::pwm::{self, PwmChannel};
+use stdlib::i2c::{self, I2cDevice};
+
+// 2. Hardware Manifest: The single source of truth for all hardware.
 hardware {
-    pin FanPWM at 9 [output];
+    // PWM pin for the fan.
+    pin FAN_PIN at 9 [output];
+
+    // Define the I2C bus and the temperature sensors connected to it.
+    device I2C_BUS at 0;
+    device TempIndoor  on I2C_BUS [address: 0x48];
+    device TempInlet   on I2C_BUS [address: 0x49];
+    device TempOutlet  on I2C_BUS [address: 0x4A];
 }
 
+// 3. Communication Queues: Statically allocated, single-writer/single-reader queues.
+queue Q_Indoor <i16, 4> [overwrite_old];
+queue Q_Inlet  <i16, 4> [overwrite_old];
+queue Q_Outlet <i16, 4> [overwrite_old];
+
+// 4. Application Interface: A contract for any regulator.
+interface Regulator {
+    // All values are scaled integers.
+    // Target and current are scaled by 100 (e.g., 3.00 -> 300).
+    // Returns a u8 for an 8-bit PWM duty cycle (0-255).
+    fn calculate(i16: target, i16: current) : u8;
+}
+
+// 5. PID Regulator Implementation: A struct implementing the interface.
+// This uses integer-only, fixed-point math to avoid costly floating-point operations.
+struct PIDRegulator : Regulator {
+    let Kp: i32 = 512; // Proportional gain, scaled by 1024
+    let Ki: i32 = 51;  // Integral gain, scaled by 1024
+    let Kd: i32 = 102; // Derivative gain, scaled by 1024
+    
+    let mut integral: i32 = 0;
+    let mut last_error: i16 = 0;
+
+    fn calculate(i16: target, i16: current) : u8 {
+        let error = target - current;
+        
+        let p_out = (Kp * error as i32) >> 10;
+        
+        integral = integral + error as i32;
+        let i_out = (Ki * integral) >> 10;
+        
+        let derivative = error - last_error;
+        let d_out = (Kd * derivative as i32) >> 10;
+        last_error = error;
+
+        let total = p_out + i_out + d_out;
+
+        // Clamp the output to the valid 8-bit PWM range.
+        return math.clamp(total, 0, 255) as u8;
+    }
+}
+
+// 6. Global driver instances.
+let mut fan_pwm: PwmChannel;
+
+// 7. Sensor Reading Task: Runs frequently to sample and average data.
+task SenseTask {
+    // Read twice and average to reduce noise.
+    let s1 = TempInlet.read(); // Assumes .read() returns i16 scaled by 100
+    Clock.delay_ms(20);
+    let s2 = TempInlet.read();
+    Q_Inlet.push((s1 + s2) / 2);
+
+    // ... Code to read TempOutlet and TempIndoor would be similar ...
+}
+
+// 8. Control Logic Task: Runs periodically to update the system state.
 task ControlTask {
-    // Logic here
+    const TARGET_DIFF: i16 = 300;  // 3.00 degrees C
+    const MAX_ROOM_TEMP: i16 = 2400; // 24.00 degrees C
+
+    let mut t_room: i16;
+    let mut t_inlet: i16;
+    let mut t_outlet: i16;
+    
+    let mut pid = PIDRegulator();
+
+    // Only run logic if we have fresh data from all three sensors.
+    if Q_Indoor.try_fetch(t_room) && Q_Inlet.try_fetch(t_inlet) && Q_Outlet.try_fetch(t_outlet) {
+        
+        // Safety Rule 1: Room is too hot.
+        // Safety Rule 2: Heater is blowing cold air.
+        if t_room > MAX_ROOM_TEMP || t_outlet <= t_room {
+            fan_pwm.set_duty(0);
+            return;
+        }
+
+        // Regulator logic.
+        let current_diff = t_outlet - t_inlet;
+        let fan_speed = pid.calculate(TARGET_DIFF, current_diff);
+        fan_pwm.set_duty(fan_speed);
+    }
+}
+
+// 9. Main Setup: Initializes hardware and starts tasks.
+fn main_setup() {
+    // Instantiate the PWM channel driver for the fan.
+    fan_pwm = pwm::PwmChannel(pin_num: FAN_PIN, freq: 1000, resolution: 8);
+
+    // Configure and start the procedural tasks.
+    SenseTask.setInterval(500);  // Sample sensors every 500ms.
+    ControlTask.setInterval(5000); // Adjust logic every 5s to account for air travel lag.
+    
+    SenseTask.start();
+    ControlTask.start();
 }

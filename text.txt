@@ -211,7 +211,7 @@ Why: AI often tries to use the same verb (e.g., read) for different types (e.g.,
 The Return Type: Should not be part of the signature for mangling (to match C++ standards), but it must be explicitly declared for the AI to maintain a "contract."
 
 3. Hoisting: To Hoist or Not?
-Yes, there should be name hoisting.
+No, there should not be name hoisting. It creates non-intuitive code that is a problem for human maintainers, even if convenient for an AI.
 
 In C: You have to declare a function at the top (header) or before you use it. This is a nightmare for AI, which often forgets to go back and add the prototype.
 
@@ -257,7 +257,7 @@ void Monitor_Task() {
 5. Summary of Function Design
 Feature	Design Choice	Reason
 Declaration	fn Name(type: arg) : ret	High readability; clear "contract" for AI.
-Hoisting	Supported	AI doesn't need to manage header/prototype sync.
+Hoisting	Not Supported	Developer must declare functions before use to ensure top-down readability.
 Signature	Name + Inputs	Allows polymorphic behavior without naming friction.
 Templates	Simplified generic	Moves logic to compile-time (saves Flash/RAM).
 A Note on "Pointers"
@@ -451,7 +451,7 @@ primitive_type = "u8" | "u16" | "u32" | "u64"
                | "f32" | "f64" 
                | "bool" | "void" ;
 2. Program Structure & Functions
-We’ll implement name hoisting by allowing the transpiler to scan all function_definition nodes before generating the C++ header.
+We will not implement name hoisting. Functions must be declared before they are used.
 
 EBNF
 program             = ( statement | function_definition )* ;
@@ -1529,7 +1529,7 @@ Mandatory Braces: All if, for, loop, and match blocks must use {}.
 
 No Fall-through: match replaces switch and is exhaustive.
 
-Hoisting: Functions and Structs can be defined in any order.
+Hoisting: Not supported. Functions and Structs must be defined before they are used.
 
 EBNF
 if_statement    = "if" expression block ( "else if" expression block )* ( "else" block )? ;

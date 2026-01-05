@@ -34,7 +34,7 @@ AEM uses strictly defined integer types to ensure cross-platform consistency and
 | `interface`   | Defines a static contract (blueprint) for behavior that `struct`s can implement. No internal state for pure interfaces.             | `interface Motor { fn setSpeed(u8: speed); }`  |
 | `struct`      | Defines a data structure. Can be generic and implement `interface`s.                                                                 | `struct Point<T> { let x: T; let y: T; }`      |
 | `queue`       | Declares a statically allocated, single-writer, single-reader buffer.                                                                | `queue Readings <i16, 16> [overwrite_old];`    |
-| `fn`          | Defines a function. Supports hoisting.                                                                                               | `fn calculate(i16: val) : i16 { return val; }` |
+| `fn`          | Defines a function.                                                                                                                  | `fn calculate(i16: val) : i16 { return val; }` |
 | `const fn`    | Defines a function that can be evaluated at compile-time. Transpiles to `constexpr`.                                               | `const fn pow(f32: b, u8: e) : f32 { ... }`   |
 | `let`/`let mut` | Declares an immutable (`let`) or mutable (`let mut`) variable or constant.                                                           | `let count: u8 = 0; let mut state: bool = false;` |
 | `const`       | Declares a compile-time constant, for single values or arrays. | `const MAX_VAL: u16 = 255;` `const LUT: [u8; 4] = [0, 1, 2, 3];` |
